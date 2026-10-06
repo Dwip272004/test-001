@@ -1,4 +1,4 @@
-import { put, list } from "@vercel/blob";
+import { get, list, put } from "@vercel/blob";
 
 export type Req = {
   id: string;
@@ -7,7 +7,7 @@ export type Req = {
   location: string;
   recruiter: string;
   createdAt: string;
-  file: { url: string; name: string; size: number; type: string };
+  file: { url: string; pathname: string; name: string; size: number; type: string };
 };
 
 export type Note = {
@@ -17,6 +17,11 @@ export type Note = {
   body: string;
   createdAt: string;
 };
+
+// Must match the store type: a private store rejects "public" and vice versa.
+// Vercel creates private stores by default now; set BLOB_ACCESS=public for a public one.
+export const ACCESS: "public" | "private" =
+  process.env.BLOB_ACCESS === "public" ? "public" : "private";
 
 // Layout in the Blob store:
 //   jds/<reqId>/<original filename>   the uploaded JD (public URL, random suffix)
@@ -38,8 +43,9 @@ async function listAll(prefix: string) {
 }
 
 async function readJson<T>(url: string): Promise<T | null> {
-  const res = await fetch(url, { cache: "no-store" });
-  return res.ok ? ((await res.json()) as T) : null;
+  const res = await get(url, { access: ACCESS, useCache: false });
+  if (!res || res.statusCode !== 200) return null;
+  return JSON.parse(await new Response(res.stream).text()) as T;
 }
 
 export async function createReq(
@@ -48,7 +54,7 @@ export async function createReq(
 ): Promise<Req> {
   const id = newId();
   const jd = await put(`jds/${id}/${file.name}`, file, {
-    access: "public",
+    access: ACCESS,
     addRandomSuffix: true,
     contentType: file.type || undefined,
   });
@@ -56,10 +62,10 @@ export async function createReq(
     ...input,
     id,
     createdAt: new Date().toISOString(),
-    file: { url: jd.url, name: file.name, size: file.size, type: file.type },
+    file: { url: jd.url, pathname: jd.pathname, name: file.name, size: file.size, type: file.type },
   };
   await put(`reqs/${id}.json`, JSON.stringify(req), {
-    access: "public",
+    access: ACCESS,
     addRandomSuffix: false,
     contentType: "application/json",
   });
@@ -88,7 +94,7 @@ export async function addNote(reqId: string, author: string, body: string): Prom
     createdAt: new Date().toISOString(),
   };
   await put(`notes/${reqId}/${note.id}.json`, JSON.stringify(note), {
-    access: "public",
+    access: ACCESS,
     addRandomSuffix: false,
     contentType: "application/json",
   });

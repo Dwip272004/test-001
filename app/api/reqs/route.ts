@@ -24,9 +24,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Use one of: ${ALLOWED.join(", ")}` }, { status: 415 });
   }
 
-  const created = await createReq(
-    { title, recruiter, client: text("client"), location: text("location") },
-    file,
-  );
-  return NextResponse.json(created, { status: 201 });
+  try {
+    const created = await createReq(
+      { title, recruiter, client: text("client"), location: text("location") },
+      file,
+    );
+    return NextResponse.json(created, { status: 201 });
+  } catch (err) {
+    console.error("createReq failed", err);
+    const detail = err instanceof Error ? err.message : "Unknown error";
+    return NextResponse.json({ error: `Could not save the req: ${detail}` }, { status: 500 });
+  }
 }

@@ -21,7 +21,7 @@ export default async function ReqPage({ params }: { params: Promise<{ id: string
           {" — submitted by "}{req.recruiter} on {new Date(req.createdAt).toLocaleDateString()}
         </p>
         <p>
-          <a href={req.file.url} target="_blank" rel="noopener noreferrer">
+          <a href={`/api/reqs/${req.id}/file`} target="_blank" rel="noopener noreferrer">
             Open JD: {req.file.name}
           </a>
           <span className="meta"> ({(req.file.size / 1024).toFixed(0)} KB)</span>
